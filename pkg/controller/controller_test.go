@@ -16,6 +16,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type fakeApiUpdater struct {
@@ -75,6 +76,9 @@ func (s *fakeApiUpdater) applyStorageClass(sc *storagev1.StorageClass) (*storage
 func (s *fakeApiUpdater) applyDaemonSet(ds *appsv1.DaemonSet, expectedGeneration int64, forceRollout bool) (*appsv1.DaemonSet, bool, error) {
 	s.daemonSets = append(s.daemonSets, ds)
 	return ds, true, nil
+}
+func (s *fakeApiUpdater) listLocalVolumes(listOptions client.ListOptions) (*localv1.LocalVolumeList, error) {
+	return &localv1.LocalVolumeList{Items: []localv1.LocalVolume{}}, nil
 }
 func (s *fakeApiUpdater) listStorageClasses(listOptions metav1.ListOptions) (*storagev1.StorageClassList, error) {
 	return &storagev1.StorageClassList{Items: []storagev1.StorageClass{}}, nil
@@ -233,7 +237,7 @@ func TestTolerationProvisionerDS(t *testing.T) {
 		t.Fatalf("error creating local provisioner DaemonSet")
 	}
 	data := provisionerDS.Spec.Template.Spec.Tolerations
-	if data == nil || len(data) == 0{
+	if data == nil || len(data) == 0 {
 		t.Errorf("error getting toleration data from provisioner DaemonSet")
 	}
 	toleration := data[0]
@@ -253,7 +257,7 @@ func TestTolerationDiskmakerDS(t *testing.T) {
 		t.Fatalf("error creating diskmaker DaemonSet")
 	}
 	data := diskmakerDS.Spec.Template.Spec.Tolerations
-	if data == nil || len(data) == 0{
+	if data == nil || len(data) == 0 {
 		t.Errorf("error getting toleration data from diskmaker DaemonSet")
 	}
 	toleration := data[0]
@@ -308,11 +312,11 @@ func getLocalVolume() *localv1.LocalVolume {
 
 func getLocalVolumeWithTolerations() *localv1.LocalVolume {
 	lv := getLocalVolume()
-	lv.Spec.Tolerations = []corev1.Toleration {
+	lv.Spec.Tolerations = []corev1.Toleration{
 		{
-			Key: "localstorage",
+			Key:      "localstorage",
 			Operator: "Equal",
-			Value: "true",
+			Value:    "true",
 		},
 	}
 	return lv

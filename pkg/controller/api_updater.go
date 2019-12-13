@@ -46,6 +46,7 @@ type apiUpdater interface {
 	applyRoleBinding(roleBinding *rbacv1.RoleBinding) (*rbacv1.RoleBinding, bool, error)
 	applyStorageClass(required *storagev1.StorageClass) (*storagev1.StorageClass, bool, error)
 	applyDaemonSet(ds *appsv1.DaemonSet, expectedGeneration int64, forceRollout bool) (*appsv1.DaemonSet, bool, error)
+	listLocalVolumes(listOptions dynclient.ListOptions) (*localv1.LocalVolumeList, error)
 	listStorageClasses(listOptions metav1.ListOptions) (*storagev1.StorageClassList, error)
 	listPersistentVolumes(listOptions metav1.ListOptions) (*corev1.PersistentVolumeList, error)
 	recordEvent(lv *localv1.LocalVolume, eventType, reason, messageFmt string, args ...interface{})
@@ -138,6 +139,27 @@ func (s *sdkAPIUpdater) listStorageClasses(listOptions metav1.ListOptions) (*sto
 
 func (s *sdkAPIUpdater) listPersistentVolumes(listOptions metav1.ListOptions) (*corev1.PersistentVolumeList, error) {
 	return k8sclient.GetKubeClient().CoreV1().PersistentVolumes().List(listOptions)
+}
+
+func (s *sdkAPIUpdater) listLocalVolumes(listOptions dynclient.ListOptions) (*localv1.LocalVolumeList, error) {
+	localVolumeList := &localv1.LocalVolumeList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "LocalVolume",
+			APIVersion: localv1.SchemeGroupVersion.String(),
+		},
+	}
+	err := wait.PollImmediate(time.Second, time.Second*10, func() (done bool, err error) {
+		err = s.dynClient.List(goctx.TODO(), &listOptions, localVolumeList)
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("error listing local volumes: %v", err)
+	}
+	return localVolumeList, nil
 }
 
 func (s *sdkAPIUpdater) recordEvent(lv *localv1.LocalVolume, eventType, reason, messageFmt string, args ...interface{}) {

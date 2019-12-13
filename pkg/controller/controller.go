@@ -26,6 +26,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog"
+	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Handler returns a Handler for running the operator
@@ -112,6 +113,15 @@ func (h *Handler) syncLocalVolumeProvider(instance *localv1.LocalVolume) error {
 
 	if isDeletionCandidate(o, localVolumeFinalizer) {
 		return h.cleanupLocalVolumeDeployment(o)
+	}
+
+	// Check to see if there's another LocalVolume in the Namespace. If so, don't create a new one to prevent duplicating PVs.
+	localVolumeList, err := h.apiClient.listLocalVolumes(client.ListOptions{Namespace: instance.GetNamespace()})
+	if err != nil {
+		return fmt.Errorf("error checking namespace for existing localvolumes: %v", err)
+	}
+	if len(localVolumeList.Items) > 1 && &localVolumeList.Items[0] != instance {
+		return fmt.Errorf("localvolume CR already exists, not creating new one from %s", instance.GetName())
 	}
 
 	// Lets add a finalizer to the LocalVolume object first
