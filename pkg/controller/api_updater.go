@@ -3,6 +3,7 @@ package controller
 import (
 	goctx "context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/openshift/library-go/pkg/operator/resource/resourceapply"
@@ -38,6 +39,7 @@ const (
 type apiUpdater interface {
 	syncStatus(oldInstance, newInstance *localv1.LocalVolume) error
 	updateLocalVolume(lv *localv1.LocalVolume) error
+	addObjectReference(cr *localv1.LocalVolume, object *corev1.ObjectReference)
 	applyServiceAccount(serviceAccount *corev1.ServiceAccount) (*corev1.ServiceAccount, bool, error)
 	applyConfigMap(configmap *corev1.ConfigMap) (*corev1.ConfigMap, bool, error)
 	applyClusterRole(clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, bool, error)
@@ -46,6 +48,7 @@ type apiUpdater interface {
 	applyRoleBinding(roleBinding *rbacv1.RoleBinding) (*rbacv1.RoleBinding, bool, error)
 	applyStorageClass(required *storagev1.StorageClass) (*storagev1.StorageClass, bool, error)
 	applyDaemonSet(ds *appsv1.DaemonSet, expectedGeneration int64, forceRollout bool) (*appsv1.DaemonSet, bool, error)
+	convertDaemonSetToObjectReference(ds *appsv1.DaemonSet) *corev1.ObjectReference
 	listStorageClasses(listOptions metav1.ListOptions) (*storagev1.StorageClassList, error)
 	listPersistentVolumes(listOptions metav1.ListOptions) (*corev1.PersistentVolumeList, error)
 	recordEvent(lv *localv1.LocalVolume, eventType, reason, messageFmt string, args ...interface{})
@@ -85,7 +88,9 @@ func (s *sdkAPIUpdater) syncStatus(oldInstance, newInstance *localv1.LocalVolume
 	klog.V(4).Infof("Syncing LocalVolume.Status of %s", commontypes.LocalVolumeKey(newInstance))
 
 	if !equality.Semantic.DeepEqual(oldInstance.Status, newInstance.Status) {
-		klog.V(4).Infof("Updating LocalVolume.Status of %s", commontypes.LocalVolumeKey(newInstance))
+		//klog.V(4).Infof("Updating LocalVolume.Status of %s", commontypes.LocalVolumeKey(newInstance))
+		klog.Infof("Old Status: %v", oldInstance.Status)
+		klog.Infof("New Status: %v", newInstance.Status)
 		ctx, cancel := s.apiContext()
 		defer cancel()
 		err := s.dynClient.Status().Update(ctx, newInstance)
@@ -96,6 +101,20 @@ func (s *sdkAPIUpdater) syncStatus(oldInstance, newInstance *localv1.LocalVolume
 		return err
 	}
 	return nil
+}
+
+func (s *sdkAPIUpdater) addObjectReference(cr *localv1.LocalVolume, object *corev1.ObjectReference) {
+	references := cr.Status.RelatedObjects
+	found := false
+	for _, item := range references {
+		if reflect.DeepEqual(&item, object) {
+			found = true
+		}
+	}
+	if !found {
+		klog.Infof("Reference not found, adding %v to object references", object)
+		cr.Status.RelatedObjects = append(references, *object)
+	}
 }
 
 func (s *sdkAPIUpdater) applyServiceAccount(sa *corev1.ServiceAccount) (*corev1.ServiceAccount, bool, error) {
@@ -128,6 +147,18 @@ func (s *sdkAPIUpdater) applyStorageClass(sc *storagev1.StorageClass) (*storagev
 
 func (s *sdkAPIUpdater) applyDaemonSet(ds *appsv1.DaemonSet, expectedGeneration int64, forceRollout bool) (*appsv1.DaemonSet, bool, error) {
 	return resourceapply.ApplyDaemonSet(k8sclient.GetKubeClient().AppsV1(), ds, expectedGeneration, forceRollout)
+}
+
+func (s *sdkAPIUpdater) convertDaemonSetToObjectReference(ds *appsv1.DaemonSet) *corev1.ObjectReference {
+	object := corev1.ObjectReference{
+		Kind:            "DaemonSet",
+		Namespace:       ds.GetNamespace(),
+		Name:            ds.GetName(),
+		UID:             ds.GetUID(),
+		APIVersion:      ds.APIVersion,
+		ResourceVersion: ds.GetResourceVersion(),
+	}
+	return &object
 }
 
 func (s *sdkAPIUpdater) listStorageClasses(listOptions metav1.ListOptions) (*storagev1.StorageClassList, error) {

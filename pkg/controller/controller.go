@@ -172,6 +172,8 @@ func (h *Handler) syncLocalVolumeProvider(instance *localv1.LocalVolume) error {
 		})
 	}
 
+	h.apiClient.addObjectReference(o, h.apiClient.convertDaemonSetToObjectReference(provisionerDS))
+
 	diskMakerDaemonset, err := h.syncDiskMakerDaemonset(o, diskMakerConfigMapModified)
 	if err != nil {
 		klog.Errorf("failed to create daemonset for diskmaker %s: %v", o.Name, err)
@@ -186,6 +188,10 @@ func (h *Handler) syncLocalVolumeProvider(instance *localv1.LocalVolume) error {
 			LastGeneration: diskMakerDaemonset.Generation,
 		})
 	}
+
+	h.apiClient.addObjectReference(o, h.apiClient.convertDaemonSetToObjectReference(diskMakerDaemonset))
+	klog.Info("Printing object references: %v", o.Status)
+
 	o.Status.Generations = children
 	o.Status.State = operatorv1.Managed
 	o = h.addSuccessCondition(o)
@@ -195,7 +201,19 @@ func (h *Handler) syncLocalVolumeProvider(instance *localv1.LocalVolume) error {
 		klog.Errorf("error syncing status: %v", err)
 		return fmt.Errorf("error syncing status: %v", err)
 	}
+	klog.Info("Printing object status post-update: %v", o.Status)
+	printRelatedObjects(o.Status.RelatedObjects)
 	return nil
+}
+
+func printRelatedObjects(objects []corev1.ObjectReference) {
+	for _, v := range objects {
+		klog.Info("New OR")
+		klog.Info("Namespace: %v", v.Namespace)
+		klog.Info("Name: %v", v.Name)
+		klog.Info("Kind: %v", v.Kind)
+		klog.Info("")
+	}
 }
 
 func (h *Handler) addFailureCondition(oldLv *localv1.LocalVolume, lv *localv1.LocalVolume, err error) error {

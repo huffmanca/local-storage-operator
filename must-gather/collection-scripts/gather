@@ -1,0 +1,14 @@
+#!/bin/bash
+BASE_COLLECTION_PATH="/must-gather"
+mkdir -p ${BASE_COLLECTION_PATH}
+
+resouces=()
+resources+=(localvolume)
+
+for resource in "${resources[@]}"
+do
+  echo "collecting dump of ${resource}"
+  { timeout 120 oc adm --dest-dir=${BASE_COLLECTION_PATH} inspect "${resource}" --all-namespaces; }
+done
+
+exit 0

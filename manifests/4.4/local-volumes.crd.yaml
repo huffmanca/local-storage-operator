@@ -125,6 +125,13 @@ spec:
             readyReplicas:
               type: integer
               format: int32
+            relatedObjects:
+              description: RelatedObjects is a list of objects created and maintained
+                by this operator. Object references will be added to this list after
+                they have been created AND found in the cluster.
+              items:
+                type: object
+              type: array
           type: object
       required:
         - spec

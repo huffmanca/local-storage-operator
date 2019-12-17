@@ -126,6 +126,11 @@ func (in *LocalVolumeStatus) DeepCopyInto(out *LocalVolumeStatus) {
 		*out = make([]operatorv1.GenerationStatus, len(*in))
 		copy(*out, *in)
 	}
+	if in.RelatedObjects != nil {
+		in, out := &in.RelatedObjects, &out.RelatedObjects
+		*out = make([]corev1.ObjectReference, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

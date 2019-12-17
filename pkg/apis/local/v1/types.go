@@ -84,6 +84,12 @@ type LocalVolumeStatus struct {
 	// generations are used to determine when an item needs to be reconciled or has changed in a way that needs a reaction.
 	// +optional
 	Generations []operatorv1.GenerationStatus `json:"generations,omitempty"`
+
+	// RelatedObjects is a list of objects created and maintained by this
+	// operator. Object references will be added to this list after they have
+	// been created AND found in the cluster.
+	// +optional
+	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
 }
 
 // SetDefaults sets values of log level and manage levels
