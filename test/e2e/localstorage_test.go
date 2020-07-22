@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	goctx "context"
 	"fmt"
 	"os"
@@ -197,7 +198,7 @@ func deleteLocalVolume(lv *localv1.LocalVolume, client framework.FrameworkClient
 func verifyDaemonSetTolerations(kubeclient kubernetes.Interface, daemonSetName, namespace string, tolerations []v1.Toleration) error {
 	dsTolerations := []v1.Toleration{}
 	err := wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		daemonset, err := kubeclient.AppsV1().DaemonSets(namespace).Get(daemonSetName, metav1.GetOptions{})
+		daemonset, err := kubeclient.AppsV1().DaemonSets(namespace).Get(context.TODO(), daemonSetName, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return false, nil
@@ -218,7 +219,7 @@ func verifyDaemonSetTolerations(kubeclient kubernetes.Interface, daemonSetName, 
 
 func verifyStorageClassDeletion(scName string, kubeclient kubernetes.Interface) error {
 	waitError := wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		_, err = kubeclient.StorageV1().StorageClasses().Get(scName, metav1.GetOptions{})
+		_, err = kubeclient.StorageV1().StorageClasses().Get(context.TODO(), scName, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return true, nil
@@ -248,13 +249,13 @@ func checkLocalVolumeStatus(lv *localv1.LocalVolume) error {
 }
 
 func deleteCreatedPV(kubeClient kubernetes.Interface, lv *localv1.LocalVolume) error {
-	err := kubeClient.CoreV1().PersistentVolumes().DeleteCollection(nil, metav1.ListOptions{LabelSelector: commontypes.GetPVOwnerSelector(lv).String()})
+	err := kubeClient.CoreV1().PersistentVolumes().DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: commontypes.GetPVOwnerSelector(lv).String()})
 	return err
 }
 
 func waitForCreatedPV(kubeClient kubernetes.Interface, lv *localv1.LocalVolume) error {
 	waitErr := wait.PollImmediate(retryInterval, timeout, func() (bool, error) {
-		pvs, err := kubeClient.CoreV1().PersistentVolumes().List(metav1.ListOptions{LabelSelector: commontypes.GetPVOwnerSelector(lv).String()})
+		pvs, err := kubeClient.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{LabelSelector: commontypes.GetPVOwnerSelector(lv).String()})
 		if err != nil {
 			if isRetryableAPIError(err) {
 				return false, nil
@@ -270,7 +271,7 @@ func waitForCreatedPV(kubeClient kubernetes.Interface, lv *localv1.LocalVolume) 
 }
 
 func selectNode(t *testing.T, kubeClient kubernetes.Interface) v1.Node {
-	nodes, err := kubeClient.CoreV1().Nodes().List(metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
+	nodes, err := kubeClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/worker"})
 	var dummyNode v1.Node
 	if err != nil {
 		t.Fatalf("error finding worker node with %v", err)
@@ -330,7 +331,7 @@ func waitListSchedulableNodes(c kubernetes.Interface) (*v1.NodeList, error) {
 	var nodes *v1.NodeList
 	var err error
 	if wait.PollImmediate(retryInterval, timeout, func() (bool, error) {
-		nodes, err = c.CoreV1().Nodes().List(metav1.ListOptions{FieldSelector: fields.Set{
+		nodes, err = c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{FieldSelector: fields.Set{
 			"spec.unschedulable": "false",
 		}.AsSelector().String()})
 		if err != nil {
@@ -374,7 +375,7 @@ func waitForDaemonSet(t *testing.T, kubeclient kubernetes.Interface, namespace, 
 	nodeCount := 1
 	var err error
 	err = wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		daemonset, err := kubeclient.AppsV1().DaemonSets(namespace).Get(name, metav1.GetOptions{})
+		daemonset, err := kubeclient.AppsV1().DaemonSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				t.Logf("Waiting for availability of %s daemonset\n", name)
@@ -400,9 +401,9 @@ func waitForNodeTaintUpdate(t *testing.T, kubeclient kubernetes.Interface, node 
 	var newNode *v1.Node
 	name := node.Name
 	err = wait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		newNode, err = kubeclient.CoreV1().Nodes().Get(name, metav1.GetOptions{})
+		newNode, err = kubeclient.CoreV1().Nodes().Get(context.TODO(), name, metav1.GetOptions{})
 		newNode.Spec.Taints = node.Spec.Taints
-		newNode, err = kubeclient.CoreV1().Nodes().Update(newNode)
+		newNode, err = kubeclient.CoreV1().Nodes().Update(context.TODO(), newNode, metav1.UpdateOptions{})
 		if err != nil {
 			t.Logf("Failed to update node %v successfully : %v", name, err)
 			return false, nil

@@ -1,6 +1,8 @@
 package localvolume
 
 import (
+	"context"
+
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -11,9 +13,9 @@ import (
 
 // ApplyStorageclass
 func applyStorageClass(client storageclientv1.StorageClassesGetter, required *storagev1.StorageClass) (*storagev1.StorageClass, bool, error) {
-	existing, err := client.StorageClasses().Get(required.Name, metav1.GetOptions{})
+	existing, err := client.StorageClasses().Get(context.TODO(), required.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		actual, err := client.StorageClasses().Create(required)
+		actual, err := client.StorageClasses().Create(context.TODO(), required, metav1.CreateOptions{})
 		return actual, true, err
 	}
 	if err != nil {
@@ -51,6 +53,6 @@ func applyStorageClass(client storageclientv1.StorageClassesGetter, required *st
 	if !changed {
 		return existing, false, nil
 	}
-	actual, err := client.StorageClasses().Update(existing)
+	actual, err := client.StorageClasses().Update(context.TODO(), existing, metav1.UpdateOptions{})
 	return actual, true, err
 }

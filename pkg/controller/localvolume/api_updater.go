@@ -129,19 +129,19 @@ func (s *sdkAPIUpdater) applyDaemonSet(ds *appsv1.DaemonSet, expectedGeneration 
 	if forceRollout {
 		klog.Infof("Rolling out DaemonSet: %s/%s", ds.Name, ds.Namespace)
 	}
-	return resourceapply.ApplyDaemonSet(s.clientset.AppsV1(), events.NewInMemoryRecorder(componentName), ds, expectedGeneration, forceRollout)
+	return resourceapply.ApplyDaemonSet(s.clientset.AppsV1(), events.NewInMemoryRecorder(componentName), ds, expectedGeneration)
 }
 
 func (s *sdkAPIUpdater) getDaemonSet(namespace, dsName string) (*appsv1.DaemonSet, error) {
-	return s.clientset.AppsV1().DaemonSets(namespace).Get(dsName, metav1.GetOptions{})
+	return s.clientset.AppsV1().DaemonSets(namespace).Get(context.TODO(), dsName, metav1.GetOptions{})
 }
 
 func (s *sdkAPIUpdater) listStorageClasses(listOptions metav1.ListOptions) (*storagev1.StorageClassList, error) {
-	return s.clientset.StorageV1().StorageClasses().List(listOptions)
+	return s.clientset.StorageV1().StorageClasses().List(context.TODO(), listOptions)
 }
 
 func (s *sdkAPIUpdater) listPersistentVolumes(listOptions metav1.ListOptions) (*corev1.PersistentVolumeList, error) {
-	return s.clientset.CoreV1().PersistentVolumes().List(listOptions)
+	return s.clientset.CoreV1().PersistentVolumes().List(context.TODO(), listOptions)
 }
 
 func (s *sdkAPIUpdater) recordEvent(lv *localv1.LocalVolume, eventType, reason, messageFmt string, args ...interface{}) {
