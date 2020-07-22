@@ -52,7 +52,7 @@ func TestLocalStorageOperator(t *testing.T) {
 	}
 
 	f := framework.Global
-	namespace, err := ctx.GetNamespace()
+	namespace, err := ctx.GetOperatorNamespace()
 	if err != nil {
 		t.Fatalf("error fetching namespace : %v", err)
 	}
@@ -354,7 +354,7 @@ func waitForOperatorToBeReady(t *testing.T, ctx *framework.TestCtx) error {
 		return err
 	}
 	t.Log("Initialized cluster resources")
-	namespace, err := ctx.GetNamespace()
+	namespace, err := ctx.GetOperatorNamespace()
 	if err != nil {
 		return err
 	}

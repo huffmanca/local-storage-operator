@@ -33,5 +33,4 @@ TEST_NAMESPACE=${NAMESPACE} TEST_LOCAL_DISK=${LOCAL_DISK} go test ./test/e2e/...
   -globalMan ${global_manifest} \
   -namespacedMan ${manifest} \
   -v \
-  -parallel=1 \
-  -singleNamespace
+  -parallel=1
